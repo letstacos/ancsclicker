@@ -1,0 +1,960 @@
+:root{
+  --bg:#071018; /* softened near-black navy for less contrast */
+  --btn-bg: rgba(255,255,255,0.94);
+  --btn-fg:#0f1112;
+  --accent:#ff7a45;
+  --muted: rgba(255,255,255,0.06);
+  --safe-gap: env(safe-area-inset-bottom, 12px);
+  /* dynamic tint color: default to neutral blue-ish */
+  --tint-color: rgba(30,120,255,0.20);
+}
+
+html,body{
+  height:100%;
+  margin:0;
+  background:var(--bg);
+  -webkit-font-smoothing:antialiased;
+  -moz-osx-font-smoothing:grayscale;
+  font-family:system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial;
+  color:#fff;
+}
+
+#sv-container{
+  position:fixed;
+  inset:0;
+  display:flex;
+  align-items:stretch;
+  justify-content:stretch;
+  /* overlay tint above the iframe but below UI elements */
+  z-index:0;
+}
+#sv-container::after{
+  content: "";
+  position: absolute;
+  inset: 0;
+  /* use dynamic tint variable controlled by JS (maps to red..blue based on CGP) */
+  background: var(--tint-color);
+  pointer-events: none;
+  z-index: 1;
+}
+
+/* Big score display at top center */
+#big-score{
+  position:fixed;
+  top:12px;
+  left:50%;
+  transform:translateX(-50%);
+  z-index:60;
+  font-weight:800;
+  color:var(--btn-fg);
+  background:rgba(255,255,255,0.06);
+  padding:10px 16px;
+  border-radius:12px;
+  font-size:30px;
+  letter-spacing:0.4px;
+  min-width:96px;
+  text-align:center;
+  box-shadow:0 12px 36px rgba(2,8,14,0.6);
+  pointer-events:none; /* display only */
+  backdrop-filter: blur(6px);
+}
+
+/* smaller CGP score positioned just below the main score */
+#big-cgp {
+  position: fixed;
+  top: calc(12px + 48px); /* roughly below big-score */
+  left: 50%;
+  transform: translateX(-50%);
+  z-index:60;
+  font-weight:700;
+  color:var(--btn-bg);
+  background: rgba(0,0,0,0.12);
+  padding:4px 10px;
+  border-radius:8px;
+  font-size:14px;
+  letter-spacing:0.4px;
+  min-width:72px;
+  text-align:center;
+  box-shadow:0 8px 20px rgba(0,0,0,0.5);
+  pointer-events:none;
+}
+
+/* iframe fills viewport without scroll; keeps 1:1 touch area and gets a gentle pulsing/shift motion */
+#streetview{
+  border:0;
+  width:100%;
+  height:100%;
+  display:block;
+  transform-origin: 50% 48%; /* slightly above center for subtle parallax */
+  will-change: transform, filter;
+  /* gentle slow easing pulse + micro-pan for life */
+  animation: earth-motion 14s cubic-bezier(.22,.98,.35,.99) infinite;
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
+}
+
+/* small floating reload button that's touch-friendly */
+#reload{
+  position:absolute;
+  right:12px;
+  bottom:calc(var(--safe-gap) + 12px);
+  width:48px;
+  height:48px;
+  border-radius:12px;
+  border:0;
+  background:var(--btn-bg);
+  color:var(--btn-fg);
+  font-size:18px;
+  line-height:1;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  box-shadow:0 6px 18px rgba(0,0,0,0.4);
+  touch-action:manipulation;
+}
+
+/* Clicker header: centered circular rotating logo, larger and touch-friendly */
+#clicker{
+  position:fixed;
+  left:50%;
+  top:50%;
+  transform:translate(-50%,-50%);
+  width:300px;
+  height:300px;
+  padding:0;
+  border-radius:50%;
+  border:0;
+  background:linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0.01));
+  color:#fff;
+  display:inline-grid;
+  align-items:center;
+  justify-items:center;
+  box-shadow:0 22px 48px rgba(3,10,18,0.75);
+  touch-action:manipulation;
+  -webkit-tap-highlight-color: transparent;
+  cursor:pointer;
+  overflow:visible;
+  z-index:120; /* bring above other UI */
+  transition: transform 180ms cubic-bezier(.2,.9,.2,1), box-shadow 180ms ease;
+}
+
+/* Secondary Showers button: left side, slightly smaller, same visual behavior */
+#clicker-showers{
+  position:fixed;
+  left:24%;
+  top:50%;
+  transform:translate(-50%,-50%);
+  width:220px;
+  height:220px;
+  padding:0;
+  border-radius:50%;
+  border:0;
+  background:linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0.01));
+  color:#fff;
+  display:inline-grid;
+  align-items:center;
+  justify-items:center;
+  box-shadow:0 20px 40px rgba(3,10,18,0.75);
+  touch-action:manipulation;
+  -webkit-tap-highlight-color: transparent;
+  cursor:pointer;
+  overflow:visible;
+  z-index:118;
+  transition: transform 180ms cubic-bezier(.2,.9,.2,1), box-shadow 180ms ease;
+}
+/* simplified Showers Bald Head: use provided avatar image */
+#clicker-showers-img{
+  width:100%;
+  height:100%;
+  display:block;
+  /* use the provided asset as the circular background */
+  background-image: url('/Untitled design (80).png');
+  background-size: cover;
+  background-position: center center;
+  background-repeat: no-repeat;
+  border-radius: 50%;
+  box-shadow: 0 16px 36px rgba(0,0,0,0.45);
+  pointer-events: none;
+  will-change: transform, background;
+}
+
+/* circular image that slowly rotates (scaled for larger button) */
+#clicker-img{
+  width:100%;
+  height:100%;
+  object-fit:cover;
+  display:block;
+  transform-origin:center center;
+  animation:spin 18s linear infinite;
+  will-change:transform;
+  border-radius:50%;
+}
+
+/* badge counter overlay adjusted for larger centered button */
+#clicker-count{
+  position:absolute;
+  right:-22px;
+  bottom:-22px;
+  background:var(--btn-bg);
+  color:var(--btn-fg);
+  padding:12px 14px;
+  border-radius:999px;
+  font-weight:900;
+  font-size:20px;
+  min-width:64px;
+  text-align:center;
+  box-shadow:0 10px 22px rgba(0,0,0,0.5);
+  transform:translate(0,0);
+  z-index:130;
+}
+
+/* Upgrades panel occupying right third */
+#upgrades{
+  position:fixed;
+  right:0;
+  top:0;
+  bottom:0;
+  width:34%;
+  max-width:380px;
+  background: linear-gradient(180deg, rgba(7,16,24,0.65), rgba(7,12,18,0.54));
+  color:var(--btn-bg);
+  padding:18px;
+  box-sizing:border-box;
+  z-index:50;
+  display:flex;
+  flex-direction:column;
+  gap:12px;
+  align-items:stretch;
+  backdrop-filter: blur(8px) saturate(1.08);
+  overflow-y:auto; /* enable scrolling when shop items exceed available height */
+  padding-bottom: calc(var(--safe-gap) + 18px);
+  border-left: 1px solid rgba(255,255,255,0.03);
+}
+
+/* Upgrade card */
+.upgrade{
+  display:flex;
+  gap:16px;
+  align-items:center;
+  background:rgba(255,255,255,0.04);
+  padding:16px;
+  border-radius:12px;
+  box-shadow:0 8px 22px rgba(0,0,0,0.44);
+  min-height:112px;
+}
+
+/* Make the Manage section larger so all management options fit nicely */
+#upgrade-delete {
+  padding: 24px; /* slightly larger padding for a more spacious Manage card */
+  min-height: 240px;
+}
+#upgrade-delete .upgrade {
+  /* make Manage card noticeably larger to fit controls and text comfortably */
+  min-height: 260px;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 16px;
+  padding: 20px;
+}
+#upgrade-delete .upgrade-meta {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+#upgrade-delete .upgrade-meta > div:first-child {
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+  width:100%;
+}
+#upgrade-delete .upgrade-meta .upgrade-title {
+  font-size:16px;
+}
+#upgrade-delete .upgrade-meta .upgrade-price {
+  margin-top:6px;
+}
+#upgrade-delete .upgrade-meta > div[style*="display:flex;gap:8px;flex-wrap:wrap;justify-content:center;"] {
+  width:100%;
+  display:flex;
+  gap:10px;
+  flex-wrap:wrap;
+  justify-content:flex-start;
+}
+
+/* Make the Mark Spammers shop item smaller (reduced footprint) */
+#upgrade-mark-spammers {
+  min-height: 120px;
+  padding: 12px;
+}
+#upgrade-mark-spammers .upgrade-img {
+  width: 72px;
+  height: 72px;
+  flex: 0 0 72px;
+  border-radius:10px;
+  object-fit:cover;
+}
+#upgrade-mark-spammers .upgrade-meta {
+  gap: 8px;
+}
+#upgrade-mark-spammers .upgrade-title {
+  font-size:16px;
+  font-weight:800;
+}
+.upgrade-img{
+  width:80px;
+  height:80px;
+  object-fit:cover;
+  border-radius:10px;
+  flex:0 0 80px;
+  background:#222;
+}
+.upgrade-meta{
+  flex:1;
+  display:flex;
+  flex-direction:column;
+  justify-content:center;
+  gap:10px;
+  padding-right:6px;
+}
+.upgrade-title{
+  font-weight:700;
+  font-size:16px;
+  color:var(--btn-bg);
+}
+.upgrade-price{
+  font-size:14px;
+  opacity:0.9;
+  margin-top:6px;
+}
+.buy-btn{
+  margin-top:8px;
+  padding:12px 14px;
+  border-radius:10px;
+  border:0;
+  background:var(--btn-bg);
+  color:var(--btn-fg);
+  font-weight:800;
+  cursor:pointer;
+  min-width:96px;
+  box-shadow:0 8px 20px rgba(3,10,18,0.42);
+  transition: transform 140ms ease, box-shadow 140ms ease, background-color 140ms ease;
+}
+.buy-btn:hover{
+  transform: translateY(-4px);
+  box-shadow:0 14px 30px rgba(3,10,18,0.45);
+}
+.buy-btn:active{
+  transform: translateY(-1px) scale(0.995);
+}
+
+/* Owned counter in panel */
+.owned-list{
+  margin-top:6px;
+  color:var(--btn-bg);
+  opacity:0.95;
+  font-weight:600;
+}
+
+/* Conveyor belt at bottom: container and moving items */
+#conveyor{
+  position:fixed;
+  left:18px;
+  right: calc(33.3333% + 12px); /* keep clear of right upgrades panel */
+  bottom: calc(var(--safe-gap) + 12px);
+  height:84px;
+  z-index:46;
+  pointer-events:none;
+  display:flex;
+  align-items:center;
+  justify-content:flex-start;
+  overflow:hidden;
+  border-radius:12px;
+  background:linear-gradient(90deg, rgba(255,255,255,0.03), rgba(255,255,255,0.02));
+  box-shadow:0 12px 30px rgba(0,0,0,0.5);
+  padding:8px 12px;
+}
+
+/* conveyor visual stripe */
+#conveyor::before{
+  content:"";
+  position:absolute;
+  left:0;
+  right:0;
+  top:0;
+  bottom:0;
+  border-radius:12px;
+  background:
+    linear-gradient(90deg, rgba(255,255,255,0.02) 0 2px, transparent 2px 6px),
+    linear-gradient(180deg, rgba(0,0,0,0.25), rgba(255,255,255,0.02));
+  pointer-events:none;
+}
+
+/* moving pencil on conveyor */
+.conveyor-item{
+  position:relative;
+  flex:0 0 auto;
+  width:64px;
+  height:64px;
+  margin-right:18px;
+  pointer-events:none;
+  will-change:transform;
+  transform-origin:center center;
+  border-radius:8px;
+  box-shadow:0 8px 18px rgba(0,0,0,0.45);
+  animation-name: conveyor-move;
+  animation-timing-function: linear;
+  animation-iteration-count: infinite;
+}
+
+/* basic image fill inside conveyor item */
+.conveyor-item img{
+  width:100%;
+  height:100%;
+  object-fit:contain;
+  display:block;
+  transform-origin:center center;
+}
+
+/* keyframes: move from right edge to left edge (full crossing). The JS will set --duration and --delay for each item */
+@keyframes conveyor-move {
+  0%   { transform: translateX(110%); opacity:1; }
+  5%   { opacity:1; }
+  50%  { transform: translateX(-10%); opacity:1; } /* pass middle */
+  95%  { opacity:1; }
+  100% { transform: translateX(-120%); opacity:0; }
+}
+
+/* small animation used when a pencil 'pops' up to click */
+.pencil-pop {
+  animation: pencil-pop 360ms cubic-bezier(.2,.8,.2,1) forwards;
+}
+@keyframes pencil-pop {
+  0% { transform: translateY(0) scale(1); }
+  30% { transform: translateY(-46px) scale(0.9); }
+  60% { transform: translateY(-46px) scale(0.9); }
+  100% { transform: translateY(0) scale(1); }
+}
+
+/* slow continuous rotation of logo */
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to   { transform: rotate(360deg); }
+}
+
+/* Danger variant for delete button */
+.buy-btn.danger, .buy-btn.danger:hover {
+  background: #ff4d4d;
+  color: #111;
+}
+
+/* Visual state for a blocked Sketchy Proxy item */
+.upgrade.proxy-blocked {
+  outline: 2px solid rgba(255,80,80,0.14);
+  box-shadow: 0 8px 28px rgba(255,40,40,0.06);
+}
+.upgrade.proxy-blocked .upgrade-title {
+  color: #ff7a7a;
+}
+.upgrade.proxy-blocked .upgrade-price {
+  color: #ffbdbd;
+}
+.buy-btn.proxy-blocked {
+  background: rgba(255,80,80,0.12);
+  color: #ffdddd;
+  box-shadow: 0 8px 20px rgba(255,50,50,0.12);
+  cursor: not-allowed;
+}
+
+/* small red cooldown text used in price area */
+.cooldown-text {
+  color: #ffb3b3;
+  font-weight:800;
+  font-size:13px;
+  margin-top:6px;
+}
+
+/* tiny Info button beside buy buttons */
+.info-btn{
+  padding:8px 10px;
+  border-radius:8px;
+  border:0;
+  background:rgba(255,255,255,0.06);
+  color:var(--btn-bg);
+  font-weight:700;
+  cursor:pointer;
+  height:40px;
+  min-width:56px;
+}
+
+/* Info overlay (small dialog) */
+#info-overlay {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 140;
+  background: rgba(0,0,0,0.5);
+  pointer-events: none;
+}
+#info-overlay[aria-hidden="false"] { pointer-events: auto; }
+
+#info-box {
+  width: min(86%, 360px);
+  background: #0b0b0b;
+  border-radius: 10px;
+  padding: 14px;
+  box-shadow: 0 18px 40px rgba(0,0,0,0.6);
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  color: var(--btn-bg);
+  text-align: center;
+}
+
+#info-msg {
+  font-size: 14px;
+  line-height: 1.35;
+  opacity: 0.95;
+}
+
+/* Confirmation overlay */
+#confirm-overlay {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 120;
+  background: rgba(0,0,0,0.6);
+  pointer-events: none;
+}
+#confirm-overlay[aria-hidden="false"] { pointer-events: auto; }
+
+#confirm-box {
+  width: min(88%, 420px);
+  background: #0b0b0b;
+  border-radius: 12px;
+  padding: 18px;
+  box-shadow: 0 24px 48px rgba(0,0,0,0.6);
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  color: var(--btn-bg);
+  text-align: center;
+}
+
+#confirm-msg {
+  font-size: 15px;
+  line-height: 1.35;
+  opacity: 0.95;
+}
+
+#confirm-actions {
+  display: flex;
+  gap: 12px;
+  justify-content: center;
+}
+
+/* Multiplier visual: golden tint overlay (applied via class) and top progress bar */
+body.multiplier-active::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: 110;
+  pointer-events: none;
+  /* keep the golden tint when multiplier is active but blend with the dynamic tint variable */
+  background:
+    linear-gradient(180deg, rgba(255, 220, 100, 0.10), rgba(255, 180, 40, 0.06)),
+    var(--tint-color);
+  mix-blend-mode: screen;
+}
+
+/* ephemeral floating pencil that fades in, lingers, then fades out while growing slightly */
+.floating-pencil {
+  position: fixed;
+  width: 48px;
+  height: 48px;
+  pointer-events: auto;
+  z-index: 200;
+  opacity: 0;
+  transform: scale(0.8);
+  animation: fp-fade 4s linear forwards;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+}
+.floating-pencil img {
+  width:100%;
+  height:100%;
+  object-fit:contain;
+  border-radius:6px;
+  filter: drop-shadow(0 6px 12px rgba(0,0,0,0.5));
+}
+@keyframes fp-fade {
+  0% { opacity: 0; transform: scale(0.8); }
+  25% { opacity: 1; transform: scale(0.94); }   /* fade in 1s */
+  75% { opacity: 1; transform: scale(1.02); }   /* linger 2s */
+  100%{ opacity: 0; transform: scale(1.06); }   /* fade out 1s */
+}
+
+/* ANSWER KEY flash overlay when clicked */
+#answer-flash {
+  position: fixed;
+  left: 50%;
+  top: 40%;
+  transform: translate(-50%, -50%);
+  z-index: 300;
+  color: #111;
+  background: #ffd86b;
+  padding: 12px 18px;
+  border-radius: 8px;
+  font-weight: 900;
+  font-size: 22px;
+  letter-spacing: 1px;
+  box-shadow: 0 18px 40px rgba(0,0,0,0.5);
+  opacity: 0;
+  transition: opacity 200ms ease;
+  pointer-events: none;
+}
+
+/* Top progress banner */
+#multiplier-banner {
+  position: fixed;
+  left: 0;
+  right: 0;
+  top: 0;
+  height: 6px;
+  z-index: 130;
+  background: rgba(255,255,255,0.03);
+  display: flex;
+  align-items: center;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 260ms ease;
+}
+#multiplier-banner[aria-hidden="false"] {
+  opacity: 1;
+}
+#multiplier-bar {
+  height: 100%;
+  width: 0%;
+  background: linear-gradient(90deg, #ffd86b, #ffb84d 60%, #ffd86b);
+  box-shadow: 0 6px 18px rgba(255,180,60,0.18), inset 0 -6px 12px rgba(255,255,255,0.06);
+  transition: width 120ms linear;
+  pointer-events: none;
+}
+
+/* subtle background motion for the embedded streetview:
+   combines a slow scale (pulse) and a micro translate to simulate motion and depth */
+@keyframes earth-motion {
+  0% {
+    transform: scale(1) translate3d(0px, 0px, 0);
+    filter: saturate(1) contrast(1);
+  }
+  25% {
+    transform: scale(1.015) translate3d(-6px, -4px, 0);
+    filter: saturate(1.03) contrast(1.02);
+  }
+  50% {
+    transform: scale(1.02) translate3d(6px, -2px, 0);
+    filter: saturate(1.02) contrast(1.01);
+  }
+  75% {
+    transform: scale(1.01) translate3d(-3px, 4px, 0);
+    filter: saturate(1.01) contrast(1.0);
+  }
+  100% {
+    transform: scale(1) translate3d(0px, 0px, 0);
+    filter: saturate(1) contrast(1);
+  }
+}
+
+/* Notification stack (bottom-left, stacks upward) */
+#notif-container{
+  position: fixed;
+  left: 18px;
+  bottom: calc(var(--safe-gap) + 110px);
+  /* place notifications just above the background tint (which uses z-index:1)
+     but behind all UI layers so they don't overlap interactive elements */
+  z-index: 2;
+  display:flex;
+  flex-direction: column-reverse;
+  gap:10px;
+  pointer-events: none;
+  max-width: min(420px, calc(66% - 24px));
+}
+.notif{
+  pointer-events: auto;
+  /* solid background instead of gradient */
+  background: rgba(255,255,255,0.06);
+  color: var(--btn-fg);
+  border-radius: 10px;
+  padding: 10px 12px;
+  display:flex;
+  gap:8px;
+  align-items:center;
+  box-shadow: 0 12px 30px rgba(0,0,0,0.6);
+  min-width: 220px;
+  max-width: 420px;
+  transform-origin: left bottom;
+  transition: transform 180ms ease, opacity 180ms ease;
+}
+.notif-hide{ transform: translateX(-8px) scale(0.98); opacity:0; }
+.notif-text{ font-size:13px; line-height:1.25; opacity:0.95; flex:1; text-align:left; }
+.notif-dismiss{
+  border:0;
+  background:transparent;
+  color:var(--btn-bg);
+  font-weight:800;
+  cursor:pointer;
+  padding:6px;
+  border-radius:6px;
+}
+.notif:focus{ outline:2px solid rgba(255,180,60,0.18); transform: translateX(0) scale(1.01); }
+
+/* Settings modal styles */
+#settings-overlay {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 420;
+  background: rgba(0,0,0,0.5);
+  pointer-events: none;
+}
+#settings-overlay[aria-hidden="false"] { pointer-events: auto; }
+
+#settings-box {
+  width: min(96%, 960px);
+  max-height: calc(100vh - 64px);
+  overflow:auto;
+  background: #071018;
+  border-radius: 14px;
+  padding: 20px;
+  box-shadow: 0 28px 60px rgba(0,0,0,0.75);
+  color: var(--btn-bg);
+  border: 1px solid rgba(255,255,255,0.04);
+  font-size: 15px;
+}
+
+/* small responsive grid for inputs inside modal */
+#settings-box .teacher-grid input {
+  font-size: 13px;
+}
+
+/* ensure settings button is visible and touch-friendly */
+#settings-btn {
+  backdrop-filter: blur(6px);
+  box-shadow: 0 8px 22px rgba(0,0,0,0.5);
+  min-width:48px;
+  min-height:40px;
+  /* ensure solid look when using accent background */
+  background: var(--accent) !important;
+  color: #071018 !important;
+}
+
+/* small helper: compact labels inside modal */
+#settings-box h3 { margin: 0 0 6px 0; font-size:18px; color:var(--btn-bg); }
+
+/* Tutorial button emphasis */
+#tutorial-btn {
+  pointer-events: auto;
+  transition: transform 420ms cubic-bezier(.2,.9,.2,1), box-shadow 420ms ease;
+  transform-origin: center center;
+  animation: tutorial-pulse 1600ms ease-in-out infinite;
+  z-index: 210;
+}
+@keyframes tutorial-pulse {
+  0% { transform: scale(1.14); box-shadow: 0 18px 40px rgba(255,120,69,0.18); }
+  50% { transform: scale(1.06); box-shadow: 0 26px 60px rgba(255,120,69,0.12); }
+  100% { transform: scale(1.14); box-shadow: 0 18px 40px rgba(255,120,69,0.18); }
+}
+/* smaller non-pulsing state after completion */
+#tutorial-btn.completed {
+  animation: none;
+  transform: scale(0.92);
+  font-size:13px;
+  padding:8px 12px;
+  border-radius:10px;
+  box-shadow:0 8px 18px rgba(0,0,0,0.4);
+  background: rgba(255,255,255,0.06);
+  color: var(--btn-bg);
+}
+
+/* tutorial overlay styles */
+#tutorial-overlay {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 500;
+  background: rgba(0,0,0,0.6);
+  pointer-events: none;
+}
+#tutorial-overlay[aria-hidden="false"] { pointer-events: auto; }
+
+#tutorial-box {
+  width: min(92%, 720px);
+  max-height: calc(100vh - 96px);
+  overflow:auto;
+}
+
+/* Falling avatar visuals: circular cropped logos that drift downward */
+.falling-avatar {
+  position: fixed;
+  top: -120px; /* start off-screen */
+  /* default visual size kept as a fallback; JS will set varying sizes inline */
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  overflow: hidden;
+  pointer-events: none;
+  transform: translateX(0) translateY(0) rotate(0deg);
+  will-change: transform, opacity;
+  box-shadow: 0 8px 18px rgba(0,0,0,0.45);
+  /* slightly transparent per request (approx 65%) to blend with tint */
+  opacity: 0.65;
+}
+
+/* Orbiting Mark Spammers image around Showers button */
+.mark-orbit {
+  position: absolute;
+  width: 72px;
+  height: 72px;
+  pointer-events: none;
+  border-radius: 50%;
+  overflow: visible;
+  transform-origin: center center;
+  z-index: 190;
+}
+.mark-orbit img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  border-radius: 50%;
+  box-shadow: 0 10px 22px rgba(0,0,0,0.45);
+  pointer-events: auto;
+  cursor: default;
+  user-select: none;
+  -webkit-user-drag: none;
+}
+
+/* --- Hall Pass cutscene & main click counter styles --- */
+/* small persistent counter badge on the main clicker */
+#main-click-counter{
+  position:absolute;
+  left:12px;
+  bottom:12px;
+  background: rgba(0,0,0,0.6);
+  color: var(--btn-bg);
+  padding:6px 8px;
+  border-radius:8px;
+  font-weight:900;
+  font-size:13px;
+  z-index:132;
+  box-shadow: 0 6px 18px rgba(0,0,0,0.45);
+  pointer-events: none;
+}
+
+/* cutscene overlay that darkens page during the popup */
+#cutscene-overlay{
+  position:fixed;
+  left:0;
+  top:0;
+  right:0;
+  bottom:0;
+  background: rgba(0,0,0,0.0);
+  z-index: 400;
+  display:none;
+  pointer-events:none;
+  transition: opacity 260ms ease;
+}
+
+/* hall pass popup visuals (handled mostly by JS but provide fallback) */
+#hall-pass-popup{
+  display:none;
+  position:fixed;
+  left:50%;
+  top:50%;
+  transform:translate(-50%,-50%) scale(0.9);
+  width:340px;
+  height:340px;
+  object-fit:cover;
+  border-radius:12px;
+  box-shadow: 0 28px 80px rgba(0,0,0,0.7);
+  z-index:410;
+  transition: transform 420ms cubic-bezier(.2,.9,.2,1), opacity 420ms ease;
+}
+
+/* pulse keyframe used for the orbiting element */
+@keyframes mark-pulse {
+  0% { transform: scale(1); }
+  30% { transform: scale(1.22); }
+  60% { transform: scale(1.18); }
+  100% { transform: scale(1); }
+}
+
+/* avatars placed behind UI but above background tint */
+.falling-avatar.behind {
+  z-index: 2; /* just above the background tint (which is z-index:1) */
+  filter: saturate(0.95) brightness(0.95);
+}
+
+/* avatars placed in front of all UI */
+.falling-avatar.front {
+  z-index: 480; /* above notifications, panels, etc. */
+  box-shadow: 0 14px 36px rgba(0,0,0,0.6);
+}
+
+/* image fill */
+.falling-avatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+/* keyframe for a single fall with slight horizontal drift and rotation */
+@keyframes fall-down {
+  0% {
+    transform: translateY(-140vh) translateX(0) rotate(0deg);
+    opacity: 0;
+  }
+  6% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 1;
+  }
+  100% {
+    transform: translateY(120vh) translateX(var(--drift, 30px)) rotate(var(--rot, 180deg));
+    opacity: 0.95;
+  }
+}
+
+/* transient pulsing/fade used by wheel spins to spotlight shop icons */
+.wheel-pulse{
+  transition: transform 820ms cubic-bezier(.2,.9,.2,1), opacity 820ms ease;
+  transform-origin: center center;
+  will-change: transform, opacity;
+  opacity: 1;
+  filter: drop-shadow(0 18px 40px rgba(0,0,0,0.6));
+  border-radius: 12px;
+}
+/* ensure clones are circular for avatars and rectangular for upgrade images */
+.wheel-pulse img{ display:block; width:100%; height:100%; object-fit:cover; border-radius:8px; }
+
+/* Flash state for the Clear All button when a red/quiz notification appears.
+   It transitions from a red background back to the normal appearance over 3s. */
+#clear-notifs {
+  transition: background-color 3s ease, color 3s ease, box-shadow 300ms ease;
+}
+#clear-notifs.clear-flash {
+  background-color: rgba(255,80,80,1) !important;
+  color: #111 !important;
+  box-shadow: 0 12px 28px rgba(255,80,80,0.18);
+}
