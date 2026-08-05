@@ -1,0 +1,555 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <!-- Authentication overlay (very basic, plain Times New Roman prompt) -->
+  <div id="auth-overlay" role="dialog" aria-hidden="false" style="position:fixed;inset:0;z-index:99999;display:flex;align-items:center;justify-content:center;background:#000;">
+    <div style="font-family: 'Times New Roman', Times, serif; color:#fff; background:transparent; padding:12px; width:84%; max-width:420px;">
+      <div style="font-size:18px; margin-bottom:8px; text-align:left;color:#fff;">say what?</div>
+      <input id="auth-input" type="password" placeholder="Password" style="width:100%;padding:8px;border:1px solid #fff;background:#000;color:#fff;font-family: 'Times New Roman', Times, serif;font-size:16px;box-sizing:border-box;" />
+      <div style="margin-top:10px;">
+        <button id="auth-submit" style="margin-top:8px;padding:8px 10px;border:1px solid #fff;background:#000;color:#fff;font-family: 'Times New Roman', Times, serif;">Enter</button>
+      </div>
+      <div id="auth-hint" style="margin-top:10px;font-size:13px;opacity:0.9;text-align:left;display:none;color:#ff6b6b;">Incorrect password</div>
+    </div>
+  </div>
+
+  <!-- Big score display (top center) -->
+  <div id="big-score" aria-live="polite">0</div>
+  <!-- Compact CGP shown under the big score -->
+  <div id="big-cgp" aria-live="polite">CGP: 0</div>
+
+  <!-- Clear notifications (top-left) -->
+  <button id="clear-notifs" aria-label="Clear notifications" title="Clear notifications" style="position:fixed;left:12px;top:12px;z-index:200;background:rgba(0,0,0,0.85);color:var(--btn-bg);border:1px solid rgba(255,255,255,0.04);padding:8px 12px;border-radius:10px;font-weight:800;">Clear all</button>
+
+  <!-- Tutorial button (next to clear all) -->
+  <button id="tutorial-btn" aria-label="Tutorial" title="Tutorial" style="position:fixed;left:110px;top:8px;z-index:210;padding:12px 18px;border-radius:14px;border:0;background:linear-gradient(90deg,var(--accent),#ffb84d);color:#071018;font-weight:900;font-size:16px;box-shadow:0 12px 30px rgba(255,120,69,0.12);">Tutorial</button>
+
+  <!-- Settings button (moved next to Tutorial) - now solid accent background -->
+  <button id="settings-btn" aria-label="Settings" title="Settings" style="position:fixed;left:220px;top:8px;z-index:210;background:var(--accent);color:#071018;border:0;padding:8px 12px;border-radius:10px;font-weight:800;">Settings</button>
+
+  <!-- Settings modal -->
+  <div id="settings-overlay" role="dialog" aria-modal="true" aria-hidden="true" style="display:none;">
+    <div id="settings-box" role="document">
+      <h2 style="margin:6px 0 12px 0;font-size:20px;">Settings</h2>
+      <div id="settings-form" style="display:flex;flex-direction:column;gap:12px;align-items:stretch;">
+        <label style="font-size:14px;">Your name
+          <input id="player-name" type="text" placeholder="Enter your name" style="width:100%;padding:10px;border-radius:10px;border:0;background:rgba(255,255,255,0.04);color:var(--btn-bg);margin-top:6px;">
+        </label>
+
+        <div style="font-size:14px;font-weight:800;">Assign teachers (choose one per subject)</div>
+
+        <!-- Subjects with two teacher choices (radio selector + corresponding input); Visual/Performing Arts keep single input -->
+        <div class="teacher-grid" style="display:grid;grid-template-columns:1fr 1fr;gap:12px;font-size:14px;">
+          <div>
+            <div style="font-weight:700;">Math</div>
+            <div style="display:flex;gap:8px;align-items:center;margin-top:8px;">
+              <label style="display:flex;align-items:center;gap:8px;">
+                <input type="radio" name="Math-choice" value="0" class="teacher-radio" data-subject="Math" data-index="0">
+                <input class="teacher-input" data-subject="Math" data-index="0" placeholder="Teacher A" style="flex:1;padding:8px;border-radius:8px;border:0;background:rgba(255,255,255,0.03);color:var(--btn-bg);">
+              </label>
+            </div>
+            <div style="display:flex;gap:8px;align-items:center;margin-top:8px;">
+              <label style="display:flex;align-items:center;gap:8px;">
+                <input type="radio" name="Math-choice" value="1" class="teacher-radio" data-subject="Math" data-index="1">
+                <input class="teacher-input" data-subject="Math" data-index="1" placeholder="Teacher B" style="flex:1;padding:8px;border-radius:8px;border:0;background:rgba(255,255,255,0.03);color:var(--btn-bg);">
+              </label>
+            </div>
+          </div>
+
+          <div>
+            <div style="font-weight:700;">I&S</div>
+            <div style="display:flex;gap:8px;align-items:center;margin-top:8px;">
+              <label style="display:flex;align-items:center;gap:8px;">
+                <input type="radio" name="I&S-choice" value="0" class="teacher-radio" data-subject="I&S" data-index="0">
+                <input class="teacher-input" data-subject="I&S" data-index="0" placeholder="Teacher A" style="flex:1;padding:8px;border-radius:8px;border:0;background:rgba(255,255,255,0.03);color:var(--btn-bg);">
+              </label>
+            </div>
+            <div style="display:flex;gap:8px;align-items:center;margin-top:8px;">
+              <label style="display:flex;align-items:center;gap:8px;">
+                <input type="radio" name="I&S-choice" value="1" class="teacher-radio" data-subject="I&S" data-index="1">
+                <input class="teacher-input" data-subject="I&S" data-index="1" placeholder="Teacher B" style="flex:1;padding:8px;border-radius:8px;border:0;background:rgba(255,255,255,0.03);color:var(--btn-bg);">
+              </label>
+            </div>
+          </div>
+
+          <div>
+            <div style="font-weight:700;">Language & Literature</div>
+            <div style="display:flex;gap:8px;align-items:center;margin-top:8px;">
+              <label style="display:flex;align-items:center;gap:8px;">
+                <input type="radio" name="Language and Literature-choice" value="0" class="teacher-radio" data-subject="Language and Literature" data-index="0">
+                <input class="teacher-input" data-subject="Language and Literature" data-index="0" placeholder="Teacher A" style="flex:1;padding:8px;border-radius:8px;border:0;background:rgba(255,255,255,0.03);color:var(--btn-bg);">
+              </label>
+            </div>
+            <div style="display:flex;gap:8px;align-items:center;margin-top:8px;">
+              <label style="display:flex;align-items:center;gap:8px;">
+                <input type="radio" name="Language and Literature-choice" value="1" class="teacher-radio" data-subject="Language and Literature" data-index="1">
+                <input class="teacher-input" data-subject="Language and Literature" data-index="1" placeholder="Teacher B" style="flex:1;padding:8px;border-radius:8px;border:0;background:rgba(255,255,255,0.03);color:var(--btn-bg);">
+              </label>
+            </div>
+          </div>
+
+          <div>
+            <div style="font-weight:700;">Spanish</div>
+            <div style="display:flex;gap:8px;align-items:center;margin-top:8px;">
+              <label style="display:flex;align-items:center;gap:8px;">
+                <input type="radio" name="Spanish-choice" value="0" class="teacher-radio" data-subject="Spanish" data-index="0">
+                <input class="teacher-input" data-subject="Spanish" data-index="0" placeholder="Teacher A" style="flex:1;padding:8px;border-radius:8px;border:0;background:rgba(255,255,255,0.03);color:var(--btn-bg);">
+              </label>
+            </div>
+            <div style="display:flex;gap:8px;align-items:center;margin-top:8px;">
+              <label style="display:flex;align-items:center;gap:8px;">
+                <input type="radio" name="Spanish-choice" value="1" class="teacher-radio" data-subject="Spanish" data-index="1">
+                <input class="teacher-input" data-subject="Spanish" data-index="1" placeholder="Teacher B" style="flex:1;padding:8px;border-radius:8px;border:0;background:rgba(255,255,255,0.03);color:var(--btn-bg);">
+              </label>
+            </div>
+          </div>
+
+          <div>
+            <div style="font-weight:700;">Design</div>
+            <div style="display:flex;gap:8px;align-items:center;margin-top:8px;">
+              <label style="display:flex;align-items:center;gap:8px;">
+                <input type="radio" name="Design-choice" value="0" class="teacher-radio" data-subject="Design" data-index="0">
+                <input class="teacher-input" data-subject="Design" data-index="0" placeholder="Teacher A" style="flex:1;padding:8px;border-radius:8px;border:0;background:rgba(255,255,255,0.03);color:var(--btn-bg);">
+              </label>
+            </div>
+            <div style="display:flex;gap:8px;align-items:center;margin-top:8px;">
+              <label style="display:flex;align-items:center;gap:8px;">
+                <input type="radio" name="Design-choice" value="1" class="teacher-radio" data-subject="Design" data-index="1">
+                <input class="teacher-input" data-subject="Design" data-index="1" placeholder="Teacher B" style="flex:1;padding:8px;border-radius:8px;border:0;background:rgba(255,255,255,0.03);color:var(--btn-bg);">
+              </label>
+            </div>
+          </div>
+
+          <div>
+            <div style="font-weight:700;">Science</div>
+            <div style="display:flex;gap:8px;align-items:center;margin-top:8px;">
+              <label style="display:flex;align-items:center;gap:8px;">
+                <input type="radio" name="Science-choice" value="0" class="teacher-radio" data-subject="Science" data-index="0">
+                <input class="teacher-input" data-subject="Science" data-index="0" placeholder="Teacher A" style="flex:1;padding:8px;border-radius:8px;border:0;background:rgba(255,255,255,0.03);color:var(--btn-bg);">
+              </label>
+            </div>
+            <div style="display:flex;gap:8px;align-items:center;margin-top:8px;">
+              <label style="display:flex;align-items:center;gap:8px;">
+                <input type="radio" name="Science-choice" value="1" class="teacher-radio" data-subject="Science" data-index="1">
+                <input class="teacher-input" data-subject="Science" data-index="1" placeholder="Teacher B" style="flex:1;padding:8px;border-radius:8px;border:0;background:rgba(255,255,255,0.03);color:var(--btn-bg);">
+              </label>
+            </div>
+          </div>
+
+          <div>
+            <div style="font-weight:700;">Health</div>
+            <div style="display:flex;gap:8px;align-items:center;margin-top:8px;">
+              <label style="display:flex;align-items:center;gap:8px;">
+                <input type="radio" name="Health-choice" value="0" class="teacher-radio" data-subject="Health" data-index="0">
+                <input class="teacher-input" data-subject="Health" data-index="0" placeholder="Teacher A" style="flex:1;padding:8px;border-radius:8px;border:0;background:rgba(255,255,255,0.03);color:var(--btn-bg);">
+              </label>
+            </div>
+            <div style="display:flex;gap:8px;align-items:center;margin-top:8px;">
+              <label style="display:flex;align-items:center;gap:8px;">
+                <input type="radio" name="Health-choice" value="1" class="teacher-radio" data-subject="Health" data-index="1">
+                <input class="teacher-input" data-subject="Health" data-index="1" placeholder="Teacher B" style="flex:1;padding:8px;border-radius:8px;border:0;background:rgba(255,255,255,0.03);color:var(--btn-bg);">
+              </label>
+            </div>
+          </div>
+
+          <div style="grid-column:1 / -1; display:flex; flex-direction:column; gap:8px;">
+            <div style="font-weight:700;">Arts enrollment (choose only one)</div>
+            <div style="display:flex;gap:12px;align-items:center;">
+              <label style="display:flex;align-items:center;gap:8px;">
+                <input type="radio" name="arts-choice" value="visual" class="arts-radio" data-subject="Visual Arts">
+                Visual Arts — Teacher:
+                <input class="teacher-input" data-subject="Visual Arts" data-index="0" placeholder="Mr. Bubes" style="flex:1;padding:8px;border-radius:8px;border:0;background:rgba(255,255,255,0.03);color:var(--btn-bg);margin-left:8px;">
+              </label>
+            </div>
+            <div style="display:flex;gap:12px;align-items:center;">
+              <label style="display:flex;align-items:center;gap:8px;">
+                <input type="radio" name="arts-choice" value="performing" class="arts-radio" data-subject="Performing Arts">
+                Performing Arts — Teacher:
+                <input class="teacher-input" data-subject="Performing Arts" data-index="0" placeholder="Mr. Dewey" style="flex:1;padding:8px;border-radius:8px;border:0;background:rgba(255,255,255,0.03);color:var(--btn-bg);margin-left:8px;">
+              </label>
+            </div>
+          </div>
+        </div>
+
+        <!-- Secret codes area (hidden/optional feature) -->
+        <div style="margin-top:8px;display:flex;gap:8px;align-items:center;">
+          <label style="font-size:14px;display:flex;gap:8px;align-items:center;width:100%;">
+            <span style="opacity:0.9;white-space:nowrap;">Enter code</span>
+            <input id="secret-code-input" type="text" placeholder="Enter code" style="flex:1;padding:8px;border-radius:8px;border:0;background:rgba(255,255,255,0.02);color:var(--btn-bg);">
+            <button id="secret-code-enter" class="buy-btn" style="min-width:80px;margin-left:6px;padding:8px 10px;">Enter</button>
+          </label>
+        </div>
+
+        <div style="display:flex;gap:8px;justify-content:center;margin-top:6px;">
+          <button id="settings-save" class="buy-btn">Save</button>
+          <button id="settings-cancel" class="buy-btn">Cancel</button>
+          <button id="settings-reset" class="buy-btn danger">Reset</button>
+        </div>
+
+      </div>
+    </div>
+  </div>
+
+  <div id="sv-container">
+    <iframe
+      id="streetview"
+      title="Google Street View - 793 Essie Ave SE, Atlanta, Georgia"
+      src="https://www.google.com/maps?q=793+Essie+Ave+SE+Atlanta+Georgia&output=svembed"
+      allowfullscreen
+      loading="lazy"
+      referrerpolicy="no-referrer-when-downgrade"
+    ></iframe>
+    <button id="reload" aria-label="Reload street view">⟳</button>
+  </div>
+
+  <!-- Clicker header: circular rotating logo with badge counter -->
+  <button id="clicker" aria-label="Atlanta Neighbourhood Charter School" title="Click to earn points">
+    <img id="clicker-img" src="/djKz03JO_400x400.jpg" alt="Atlanta Neighbourhood Charter School logo">
+    <span id="clicker-count" aria-live="polite">0</span>
+    <!-- main click progress counter (tracks clicks toward 1000) -->
+    <span id="main-click-counter" aria-live="polite" title="Main click progress">0 / 1000</span>
+  </button>
+
+  <!-- Hall pass popup used by cutscene (hidden until triggered) -->
+  <img id="hall-pass-popup" src="/354-3547953_school-hall-pass-id-letter-h-pass-stranger.png" alt="Hall Pass" style="display:none;" />
+
+  <!-- Cutscene overlay (darkens everything except the popup during cutscene) -->
+  <div id="cutscene-overlay" aria-hidden="true" style="display:none;"></div>
+
+  <!-- Showers Bald Head button placeholder (created after purchase). Initially hidden. -->
+  <button id="clicker-showers" aria-label="Showers Bald Head" title="Click for 50 points" style="display:none;position:relative;">
+    <div id="clicker-showers-img" aria-hidden="true"></div>
+    <span id="showers-count" aria-live="polite" style="position:absolute;left:50%;top:8px;transform:translateX(-50%);background:rgba(0,0,0,0.6);color:#fff;padding:6px 8px;border-radius:10px;font-weight:800;font-size:14px;">0/500</span>
+  </button>
+
+  <!-- Upgrades panel on the right third -->
+  <aside id="upgrades" aria-label="Upgrades shop">
+    <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;">
+      <h3 style="margin:0;">Upgrades</h3>
+      <!-- simple tab bar: Main Shop / Hall Pass Shop -->
+      <div id="shop-tabs" style="display:flex;gap:8px;align-items:center;">
+        <button id="tab-main" class="buy-btn" style="padding:8px 12px;min-width:96px;">Main Shop</button>
+        <button id="tab-hallpass" class="buy-btn" style="padding:8px 12px;min-width:120px;">Hall Pass Shop</button>
+      </div>
+    </div>
+
+    <div id="shop-credits" style="display:flex;align-items:center;gap:10px;margin-top:8px;font-weight:800;color:var(--btn-bg);">
+      <div style="font-size:14px;">Shop credits: <span id="shop-credits-count">0</span></div>
+      <div style="font-size:14px;margin-left:8px;">Hall passes: <span id="hallpass-count">0</span></div>
+      <label style="font-size:13px;opacity:0.95;display:flex;align-items:center;gap:8px;margin-left:auto;">
+        <input id="use-credit-toggle" type="checkbox" style="width:18px;height:18px;">
+        Use a shop credit for purchases
+      </label>
+    </div>
+
+    <!-- Main shop panel (default visible) -->
+    <div id="shop-panel-main" role="region" aria-label="Main shop" style="margin-top:12px;">
+      <div class="upgrade" id="upgrade-clicker" role="button" tabindex="0" aria-pressed="false">
+        <img src="/yellow-pencil-isolated-sharpened-tip-writing-tool-school-supplies-educational-object-office-stationery-classic-design-creative-simple-transparent-background-png.webp" alt="pencil clicker" class="upgrade-img">
+        <div class="upgrade-meta">
+          <div style="display:flex;justify-content:space-between;align-items:center;">
+            <div class="upgrade-title">ChatGPT</div>
+            <div class="upgrade-owned" id="owned-clicker">Owned: 0</div>
+          </div>
+          <div class="upgrade-price" id="clicker-price">Cost: 50</div>
+          <div style="display:flex;gap:8px;align-items:center;">
+            <button id="buy-clicker" class="buy-btn">Buy</button>
+            <button class="info-btn" data-info="chatgpt" aria-label="Info about ChatGPT">Info</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="upgrade" id="upgrade-multiplier" role="button" tabindex="0" aria-pressed="false">
+        <img src="/rolled-up-roll-of-brown-kraft-paper-and-tied-with-red-ribbon-photo.jpg" alt="multiplier" class="upgrade-img">
+        <div class="upgrade-meta">
+          <div style="display:flex;justify-content:space-between;align-items:center;">
+            <div class="upgrade-title">Principal for the Day</div>
+            <div class="upgrade-owned" id="owned-multiplier">Owned: 0</div>
+          </div>
+          <div class="upgrade-price" id="multiplier-price">Cost: 1000</div>
+          <div style="display:flex;gap:8px;align-items:center;">
+            <button id="buy-multiplier" class="buy-btn">Buy</button>
+            <button class="info-btn" data-info="principal" aria-label="Info about Principal for the Day">Info</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- New shop item: Autoclicker Boost (doubles autoclicker output) -->
+      <div class="upgrade" id="upgrade-auto-boost" role="button" tabindex="0" aria-pressed="false">
+        <img src="/crazy.webp" alt="auto boost" class="upgrade-img">
+        <div class="upgrade-meta">
+          <div style="display:flex;justify-content:space-between;align-items:center;">
+            <div class="upgrade-title">Sketchy Proxy</div>
+            <div class="upgrade-owned" id="owned-auto-boost">Owned: 0</div>
+          </div>
+          <div class="upgrade-price" id="auto-boost-price">Cost: 1000</div>
+          <!-- visible timer element for when proxies are blocked -->
+          <div id="proxy-timer" class="cooldown-text" style="display:none;margin-top:6px;"></div>
+          <div style="display:flex;gap:8px;align-items:center;">
+            <button id="buy-auto-boost" class="buy-btn">Buy</button>
+            <button class="info-btn" data-info="sketchy" aria-label="Info about Sketchy Proxy">Info</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Hall Pass shop panel (hidden until selected) -->
+    <div id="shop-panel-hallpass" role="region" aria-label="Hall Pass shop" style="margin-top:12px;display:none;">
+      <!-- replaced placeholders with Hinton Rodrick one-time hall-pass helper -->
+      <div style="font-weight:800;color:var(--btn-bg);margin-bottom:8px;">Use your Hall Passes to buy special items (coming soon).</div>
+
+      <!-- Hinton Rodrick helper: one-time purchase that continually orbits the main clicker with dramatic cutscene -->
+      <div class="upgrade" id="upgrade-hinton" style="min-height:140px;">
+        <img src="/HintonRodrick.jpg" alt="Mr. Hinton the GOAT" class="upgrade-img" style="border-radius:50%;">
+        <div class="upgrade-meta">
+          <div style="display:flex;justify-content:space-between;align-items:center;">
+            <div class="upgrade-title">Mr. Hinton the GOAT</div>
+            <div class="upgrade-owned" id="owned-hinton">Owned: 0</div>
+          </div>
+          <div class="upgrade-price" id="hinton-price">Cost: 50 Hall Passes</div>
+          <div style="display:flex;gap:8px;align-items:center;">
+            <button id="buy-hinton" class="buy-btn">Buy (50 HP)</button>
+            <button class="info-btn" data-info="ed_santos" aria-label="Info about Mr. Hinton">Info</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Ed Santos helper (arrives slowly on screen); costs 10 Hall Passes -->
+      <div class="upgrade" id="upgrade-ed-santos" style="min-height:120px;">
+        <img src="/ed_santos.jpg" alt="Mr. Santos" class="upgrade-img">
+        <div class="upgrade-meta">
+          <div style="display:flex;justify-content:space-between;align-items:center;">
+            <div class="upgrade-title">Mr. Santos</div>
+            <div class="upgrade-owned" id="owned-ed-santos">Owned: 0</div>
+          </div>
+          <div class="upgrade-price" id="ed-santos-price">Cost: 10 Hall Passes</div>
+          <div style="display:flex;gap:8px;align-items:center;">
+            <button id="buy-ed-santos" class="buy-btn">Buy (10 HP)</button>
+            <button class="info-btn" data-info="ed_santos" aria-label="Info about Mr. Santos">Info</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Mr Typhoon helper: spawns clickable Richardson avatars every 30s; costs 12 Hall Passes -->
+      <div class="upgrade" id="upgrade-typhoon" style="min-height:120px;">
+        <img src="/Richardson_Tyree.jpg" alt="Mr Typhoon" class="upgrade-img">
+        <div class="upgrade-meta">
+          <div style="display:flex;justify-content:space-between;align-items:center;">
+            <div class="upgrade-title">Mr Typhoon</div>
+            <div class="upgrade-owned" id="owned-typhoon">Owned: 0</div>
+          </div>
+          <div class="upgrade-price" id="typhoon-price">Cost: 12 Hall Passes</div>
+          <div style="display:flex;gap:8px;align-items:center;">
+            <button id="buy-typhoon" class="buy-btn">Buy (12 HP)</button>
+            <button class="info-btn" data-info="typhoon" aria-label="Info about Mr Typhoon">Info</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- History Class helper: one-time hall-pass purchase that sends Rick Caldwell swooping from top every 20s -->
+      <div class="upgrade" id="upgrade-history" style="min-height:120px;">
+        <img src="/RickCaldwell.jpg" alt="Rick Bombshell" class="upgrade-img" style="border-radius:10px;">
+        <div class="upgrade-meta">
+          <div style="display:flex;justify-content:space-between;align-items:center;">
+            <div class="upgrade-title">Rick Bombshell</div>
+            <div class="upgrade-owned" id="owned-history">Owned: 0</div>
+          </div>
+          <div class="upgrade-price" id="history-price">Cost: 70 Hall Passes</div>
+          <div style="display:flex;gap:8px;align-items:center;">
+            <button id="buy-history" class="buy-btn">Buy (70 HP)</button>
+            <button class="info-btn" data-info="history" aria-label="Info about Rick Bombshell">Info</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- New shop item: Social Confidence (replaces Study Group) -->
+    <div class="upgrade" id="upgrade-study-group" role="button" tabindex="0" aria-pressed="false">
+      <img src="/istockphoto-175217818-612x612.png" alt="social confidence" class="upgrade-img">
+      <div class="upgrade-meta">
+        <div style="display:flex;justify-content:space-between;align-items:center;">
+          <div class="upgrade-title">Social Confidence</div>
+          <div class="upgrade-owned" id="owned-study">Owned: 0</div>
+        </div>
+        <div class="upgrade-price" id="study-price">Cost: 20000</div>
+        <div style="display:flex;gap:8px;align-items:center;">
+          <button id="buy-study" class="buy-btn">Buy</button>
+          <button class="info-btn" data-info="study" aria-label="Info about Social Confidence">Info</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Restored shop item: Mark Spammers (orbiting helper that auto-clicks Showers) -->
+    <div class="upgrade" id="upgrade-mark-spammers" role="button" tabindex="0" aria-pressed="false">
+      <img src="/Untitled design (79).png" alt="Mark Spammers" class="upgrade-img">
+      <div class="upgrade-meta">
+        <div style="display:flex;justify-content:space-between;align-items:center;">
+          <div class="upgrade-title">Mark Spammers</div>
+          <div class="upgrade-owned" id="owned-mark-spammers">Owned: 0</div>
+        </div>
+        <div class="upgrade-price" id="mark-spammers-price">Cost: 100000</div>
+        <div style="display:flex;gap:8px;align-items:center;">
+          <button id="buy-mark-spammers" class="buy-btn">Buy</button>
+          <button class="info-btn" data-info="mark" aria-label="Info about Mark Spammers">Info</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- New shop item: Showers Bald Head -->
+    <div class="upgrade" id="upgrade-showers" role="button" tabindex="0" aria-pressed="false">
+      <img src="/ShowersNikia.jpg" alt="Showers Bald Head" class="upgrade-img">
+      <div class="upgrade-meta">
+        <div style="display:flex;justify-content:space-between;align-items:center;">
+          <div class="upgrade-title">Showers Bald Head</div>
+          <div class="upgrade-owned" id="owned-showers">Owned: 0</div>
+        </div>
+        <div class="upgrade-price" id="showers-price">Cost: 100000</div>
+        <div style="display:flex;gap:8px;align-items:center;">
+          <button id="buy-showers" class="buy-btn">Buy</button>
+          <button class="info-btn" data-info="showers" aria-label="Info about Showers Bald Head">Info</button>
+        </div>
+      </div>
+    </div>
+
+
+
+    <!-- New shop item: Factory Reset -->
+    <div class="upgrade" id="upgrade-factory" role="button" tabindex="0" aria-pressed="false">
+      <img src="/crazy.webp" alt="Factory Reset" class="upgrade-img">
+      <div class="upgrade-meta">
+        <div style="display:flex;justify-content:space-between;align-items:center;">
+          <div class="upgrade-title">Factory Reset</div>
+          <div class="upgrade-owned" id="owned-factory">Owned: 0</div>
+        </div>
+        <div class="upgrade-price" id="factory-price">Cost: 100000</div>
+        <div style="display:flex;gap:8px;align-items:center;">
+          <button id="buy-factory" class="buy-btn">Buy</button>
+          <button class="info-btn" data-info="factory" aria-label="Info about Factory Reset">Info</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Funny item: Detention Slip -->
+    <div class="upgrade" id="upgrade-detention" role="button" tabindex="0" aria-pressed="false">
+      <img src="/rolled-up-roll-of-brown-kraft-paper-and-tied-with-red-ribbon-photo.jpg" alt="Detention Slip" class="upgrade-img">
+      <div class="upgrade-meta">
+        <div style="display:flex;justify-content:space-between;align-items:center;">
+          <div class="upgrade-title">Scary Pink Slip</div>
+          <div class="upgrade-owned" id="owned-detention">Owned: 0</div>
+        </div>
+        <div class="upgrade-price" id="detention-price">Cost: 500</div>
+        <div style="display:flex;gap:8px;align-items:center;">
+          <button id="buy-detention" class="buy-btn">Buy</button>
+          <button class="info-btn" data-info="detention" aria-label="Info about Detention Slip">Info</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Funny item: Mystery Meat Lunch -->
+    <div class="upgrade" id="upgrade-mystery" role="button" tabindex="0" aria-pressed="false">
+      <img src="/crazy.webp" alt="Sloppy Joe Day" class="upgrade-img">
+      <div class="upgrade-meta">
+        <div style="display:flex;justify-content:space-between;align-items:center;">
+          <div class="upgrade-title">Sloppy Joe Day</div>
+          <div class="upgrade-owned" id="owned-mystery">Owned: 0</div>
+        </div>
+        <div class="upgrade-price" id="mystery-price">Cost: 2500</div>
+        <div style="display:flex;gap:8px;align-items:center;">
+          <button id="buy-mystery" class="buy-btn">Buy</button>
+          <button class="info-btn" data-info="mystery" aria-label="Info about Mystery Meat Lunch">Info</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Funny item: Honors Hoodie -->
+    <div class="upgrade" id="upgrade-hoodie" role="button" tabindex="0" aria-pressed="false">
+      <img src="/istockphoto-175217818-612x612.png" alt="Unwarranted ISS" class="upgrade-img">
+      <div class="upgrade-meta">
+        <div style="display:flex;justify-content:space-between;align-items:center;">
+          <div class="upgrade-title">Unwarranted ISS</div>
+          <div class="upgrade-owned" id="owned-hoodie">Owned: 0</div>
+        </div>
+        <div class="upgrade-price" id="hoodie-price">Cost: 8000</div>
+        <div style="display:flex;gap:8px;align-items:center;">
+          <button id="buy-hoodie" class="buy-btn">Buy</button>
+          <button class="info-btn" data-info="hoodie" aria-label="Info about Honors Hoodie">Info</button>
+        </div>
+      </div>
+    </div>
+
+
+
+
+
+    <!-- Delete auto clickers action with confirmation -->
+    <div class="upgrade" id="upgrade-delete" style="margin-top:8px;">
+      <div class="upgrade-meta" style="gap:8px;">
+        <div class="upgrade-title">Manage</div>
+        <div style="font-size:13px; opacity:0.9;">Remove all auto clickers</div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;justify-content:center;margin-top:6px;">
+          <button id="delete-clickers" class="buy-btn danger">Delete Auto Clickers</button>
+          <button id="delete-mark-spammers" class="buy-btn danger" title="Remove Mark Spammers ownership and orbit">Delete Mark Spammers</button>
+          <button id="delete-showers" class="buy-btn danger" title="Remove Showers Bald Head ownership">Delete Showers Bald Head</button>
+          <button id="delete-santos" class="buy-btn danger" title="Remove Mr. Santos helper and stop his arrivals">Delete Mr. Santos</button>
+        </div>
+      </div>
+    </div>
+
+
+
+  </aside>
+
+  <!-- Confirmation overlay -->
+  <div id="confirm-overlay" role="dialog" aria-modal="true" aria-hidden="true" style="display:none;">
+    <div id="confirm-box" role="document">
+      <div id="confirm-msg">Are you sure you want to permanently delete all auto clickers? This cannot be undone.</div>
+      <div id="confirm-actions">
+        <button id="confirm-cancel" class="buy-btn">Cancel</button>
+        <button id="confirm-accept" class="buy-btn danger">Delete</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="conveyor" aria-hidden="true"></div>
+
+  <!-- Small info dialog (reusable) -->
+  <div id="info-overlay" role="dialog" aria-modal="true" aria-hidden="true" style="display:none;">
+    <div id="info-box" role="document">
+      <div id="info-msg"></div>
+      <div style="margin-top:12px;display:flex;gap:8px;justify-content:center;">
+        <button id="info-close" class="buy-btn">Close</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Multiplier banner: top progress bar + translucent golden tint while active -->
+  <div id="multiplier-banner" aria-hidden="true">
+    <div id="multiplier-bar" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0"></div>
+  </div>
+
+  <!-- Tutorial overlay (step-by-step) -->
+  <div id="tutorial-overlay" role="dialog" aria-modal="true" aria-hidden="true" style="display:none;">
+    <div id="tutorial-box" role="document" style="width:min(92%,720px);background:#071018;border-radius:12px;padding:18px;color:var(--btn-bg);box-shadow:0 22px 44px rgba(0,0,0,0.7);">
+      <div id="tutorial-step" style="font-size:16px;font-weight:800;margin-bottom:8px;"></div>
+      <div id="tutorial-body" style="font-size:14px;opacity:0.95;margin-bottom:12px;"></div>
+      <div style="display:flex;gap:8px;justify-content:center;">
+        <button id="tutorial-prev" class="buy-btn" style="display:none;">Prev</button>
+        <button id="tutorial-next" class="buy-btn">Next</button>
+        <button id="tutorial-close" class="buy-btn danger">Exit</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ephemeral click target flash -->
+  <div id="answer-flash" aria-hidden="true" style="display:none;pointer-events:none;">
+    ANSWER KEY
+  </div>
+
+  <script src="script.js"></script>
+</body>
+</html>
